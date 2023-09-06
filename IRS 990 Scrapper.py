@@ -3,11 +3,15 @@ import urllib
 import requests
 import pandas as pd
 from pprint import pprint
+# revenue + net + total total comp
 
-columns = ["Name", "Title", "Compensation", "Other Comp"]
+columns = ["Name", "Title", "Base Compensation", "Other Comp", "Total Comp"]
 jobs = pd.DataFrame(columns=columns)
 
-nonprofit_search_query = "Stevens Institute of Technology"
+nonprofit_search_query = "Worcester Polytechnic Institute"
+# Stevens Institute of Technology
+# Worcester Polytechnic Institute
+# Rochester Institute of Technology
 
 search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
 parameters = urllib.parse.urlencode({
@@ -38,18 +42,29 @@ print(company)
 irs990_soup = irs_990_soup.find("IRS990")
 occupation_soup = irs990_soup.find_all("Form990PartVIISectionAGrp")
 for employee_soup in occupation_soup:
+    name = ""
+    try:
+        name = employee_soup.find("PersonNm").text.strip()
+    except:
+        business_soup = employee_soup.find("BusinessName")
+        name = business_soup.find("BusinessNameLine1Txt").text.strip()
+
+    base_comp = int(employee_soup.find("ReportableCompFromOrgAmt").text.strip())
+    other_comp = int(employee_soup.find("OtherCompensationAmt").text.strip())
+
     job_info = {
-        "Name" : employee_soup.find("PersonNm").text.strip(),
+        "Name" : name,
         "Title": employee_soup.find("TitleTxt").text.strip(),
-        "Compensation" : int(employee_soup.find("ReportableCompFromOrgAmt").text.strip()),
-        "Other Comp" : int(employee_soup.find("OtherCompensationAmt").text.strip())
+        "Base Compensation" : base_comp,
+        "Other Comp" : other_comp,
+        "Total Comp" : base_comp + other_comp
     }
     jobs.loc[len(jobs)] = job_info
 
-top_jobs = jobs.sort_values(by=['Compensation'], ascending=False)[0:10]
+top_jobs = jobs.sort_values(by=['Total Comp'], ascending=False)[0:10]
 
 print(top_jobs)
-#top_jobs.to_csv("top_jobs.csv")
+top_jobs.to_csv("top_jobs.csv")
     
 
 
