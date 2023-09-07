@@ -2,29 +2,37 @@ from bs4 import BeautifulSoup
 import urllib
 import requests
 import pandas as pd
-from pprint import pprint
 import locale
 from openpyxl import load_workbook
 
+# Set locale to the US for currency formatting
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # To-Do List
-# Create a library of checked colleges
+# Finish Commenting Functions
+# Fix Excel Corruption
+# Better Way of searching for colleges
+#   Probably going to be some form of web creation at this point
 
+# Use the information from ProPublica API and more GET requests to get the xml version of the IRS 990 form
 def get_irs_990_web_content(search_result):
+
+    # Get the identification number for the institution to be used in another url
     search_result_json = search_result.json()
     search_result_ein = search_result_json['organizations'][0]['ein']
 
+    # Search for the base html page of the searched Non-profit 
     specific_nonprofit_search = "https://projects.propublica.org/nonprofits/organizations/" + str(search_result_ein)
     page = requests.get(specific_nonprofit_search).content
 
+    # Use BeautifulSoup library to find the first xml button on the website and get the link to the xml report
     page_soup = BeautifulSoup(page, "html.parser")
     xml_soup = page_soup.find(class_="action xml")
     xml_url_query = xml_soup.get("href")
     xml_url = "https://projects.propublica.org" + xml_url_query
-
     xml_search_result = requests.get(xml_url).content
 
+    # Use BeautifulSoup to parse the web content as xml and return
     irs_990_soup = BeautifulSoup(xml_search_result, features="xml")
     return irs_990_soup
 
@@ -135,31 +143,37 @@ def write_intitution_to_excel(revenue_dict, top_jobs):
     writer.save()
     writer.close()
 
-
+# Ask for Institution Name + Excel Sheet Name
 nonprofit_search_query = input("Full Institute Name: ")
 nonprofit_subtitle = input("Institute Nickname: ")
+# If no subtitle is provided, just make it the search query
 if nonprofit_subtitle == "":
     nonprofit_subtitle = nonprofit_search_query
-# Stevens Institute of Technology
-# Worcester Polytechnic Institute
-# Rochester Institute of Technology
 
+# Use ProPublica API to get basic institution data
 search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
 parameters = urllib.parse.urlencode({
       'q' : nonprofit_search_query
   })
-
 search_result = requests.get(search_url+parameters)
+
+# If an institution is found, continue; break if nothing is found
 if search_result.status_code == 200:
+
+    # Get the web content in the form of an xml version of an IRS 990 form
     irs_990_soup = get_irs_990_web_content(search_result)
 
+    # Use xml content to get the paid reported occupations sorted by highest compensation descending
     top_jobs, company_wide_compensation = get_institution_occupation_data(irs_990_soup)
 
+    # Get the basic IRS data from the xml content
     revenue_dict = get_institution_revenue_data(irs_990_soup)
     revenue_dict["company_wide_compensation"] = company_wide_compensation
 
+    # Erase Comment to get a terminal summary of the information found
     institute_summary(revenue_dict, top_jobs)
 
+    # Write all the information to the Master Excel file
     write_intitution_to_excel(revenue_dict, top_jobs)
     
 else:
