@@ -3,7 +3,7 @@ import urllib
 import requests
 import pandas as pd
 import locale
-from openpyxl import load_workbook
+import openpyxl
 
 # Set locale to the US for currency formatting
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
@@ -128,13 +128,16 @@ def institute_summary(revenue_dict, top_jobs):
     print(f"Prior Year Total Revenue            :", locale.currency(revenue_dict["pyTotalRevenue"], grouping=True))
     print(f"Current Year Net Income Less Expense:", locale.currency(revenue_dict["cyNetRevenue"], grouping=True))
     print(f"Prior Year Net Income Less Expense  :", locale.currency(revenue_dict["pyNetRevenue"], grouping=True))
-    print(f"Total Company Wide Compensation     :", locale.currency(revenue_dict["company_wide_compensation"], grouping=True))
+    print(f"Total College Wide Compensation     :", locale.currency(revenue_dict["company_wide_compensation"], grouping=True))
     print(top_jobs[0:10])
 
-def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle):
-    excelWorkbook = load_workbook("Master.xlsx")
-    writer = pd.ExcelWriter("Master.xlsx", engine='openpyxl')
-    writer.book = excelWorkbook
+def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename):
+    
+    try:
+        excelWorkbook = openpyxl.load_workbook(filename)
+    except:
+        excelWorkbook = openpyxl.Workbook()
+
     try:
         sheet = excelWorkbook[nonprofit_subtitle]
     except:
@@ -148,7 +151,7 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle):
     sheet["B3"] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
     sheet["A4"] = "Prior Year Net Income Less Expense"
     sheet["B4"] = locale.currency(revenue_dict["pyNetRevenue"], grouping=True)
-    sheet["A5"] = "Total Company Wide Compensation"
+    sheet["A5"] = "Total College Wide Compensation"
     sheet["B5"] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
 
     sheet["B7"] = "Name"
@@ -172,10 +175,10 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle):
         row += 1
         index += 1
 
-    writer.save()
-    writer.close()
+    #writer.close()
+    excelWorkbook.save(filename)
 
-def search(nonprofit_search_query, nonprofit_subtitle, show_summary):
+def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
     # Use ProPublica API to get basic institution data
     search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
     parameters = urllib.parse.urlencode({
@@ -185,6 +188,7 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary):
 
     # If an institution is found, continue; break if nothing is found
     if search_result.status_code == 200:
+        print("Found", nonprofit_search_query)
 
         # Get the web content in the form of an xml version of an IRS 990 form
         irs_990_soup = get_irs_990_web_content(search_result)
@@ -201,26 +205,27 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary):
             institute_summary(revenue_dict, top_jobs)
 
         # Write all the information to the Master Excel file
-        write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle)
+        write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename)
     
     else:
         print("Could not find", nonprofit_search_query)
 
 
-print("If reading from list, enter 'list'. If not, just hit enter.")
+print("If reading from list, enter the filename. If not, just hit enter.")
 using_list = input("Using list?: ")
-if using_list == "list":
-    print("Reading from file...")
+if len(using_list) > 4 and using_list[-4:] == ".txt":
+    print("Reading from file", using_list, "...")
     institutes = []
-    with open("Institutes.txt", "r") as f:
+    with open(using_list, "r") as f:
         institutes = f.readlines()
     for i in range(len(institutes)):
         institutes[i] = institutes[i][:-1]
     for i in range(len(institutes)):
         if i % 2 == 0:
-            search(institutes[i], institutes[i+1], False)
+            search(institutes[i], institutes[i+1], False, using_list[:-4]+".xlsx")
         else:
             continue
+    print("Output college information in", using_list[:-4]+".xlsx")
 
 else:
     # Ask for Institution Name + Excel Sheet Name
@@ -229,5 +234,6 @@ else:
     # If no subtitle is provided, just make it the search query
     if nonprofit_subtitle == "":
         nonprofit_subtitle = nonprofit_search_query
-    search(nonprofit_search_query, nonprofit_subtitle, True)
+    search(nonprofit_search_query, nonprofit_subtitle, True, nonprofit_subtitle+".xlsx")
+    print("Output college information in", nonprofit_subtitle+".xlsx")
 
