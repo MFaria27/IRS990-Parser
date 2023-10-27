@@ -10,10 +10,11 @@ locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # To-Do List
 # Finish Commenting Functions
-# Fix Excel Corruption
-# For some reason, title group "President" cannot be read
 # Better Way of searching for colleges
 #   Probably going to be some form of web creation at this point
+# Search "SCREAM" to find line 43
+#   Some colleges have no tax fillings for the "college" but they do for things like "Alumni Association Inc"
+#   Add break in code that returns (Could not find) if tax filings contain keywords like above
 
 # Use the information from ProPublica API and more GET requests to get the xml version of the IRS 990 form
 def get_irs_990_web_content(search_result):
@@ -41,6 +42,7 @@ def get_institution_occupation_data(irs_990_soup):
     columns = ["Name", "Title", "Title Group", "Base Compensation", "Other Comp", "Total Comp"]
     jobs = pd.DataFrame(columns=columns)
     company_wide_compensation = 0
+    # SCREAM
     tax_filing_soup = irs_990_soup.find("IRS990")
     occupation_soup = tax_filing_soup.find_all("Form990PartVIISectionAGrp")
     for employee_soup in occupation_soup:
