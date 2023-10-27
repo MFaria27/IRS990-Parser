@@ -38,15 +38,22 @@ def get_irs_990_web_content(search_result):
     irs_990_soup = BeautifulSoup(xml_search_result, features="xml")
     return irs_990_soup
 
+# Get all the information present on the IRS990 form on the occupations paid the greatest in the college
 def get_institution_occupation_data(irs_990_soup):
+    # We will be looking for these specific pieces of information
+    # "Title Group" is the generalization of "Title" determined in a function below
+    # "Total Compensation" is the addition of base comp and other comp
     columns = ["Name", "Title", "Title Group", "Base Compensation", "Other Comp", "Total Comp"]
     jobs = pd.DataFrame(columns=columns)
     company_wide_compensation = 0
     # SCREAM
+    # Get the IRS990 part of the xml tax filling
     tax_filing_soup = irs_990_soup.find("IRS990")
+    # PartVII in the tax filling is where all the occupational information is
     occupation_soup = tax_filing_soup.find_all("Form990PartVIISectionAGrp")
     for employee_soup in occupation_soup:
         name = ""
+        # Forms have the name of an employee in different tasks, so try both
         try:
             name = employee_soup.find("PersonNm").text.strip()
         except:
@@ -56,12 +63,15 @@ def get_institution_occupation_data(irs_990_soup):
         base_comp = int(employee_soup.find("ReportableCompFromOrgAmt").text.strip())
         other_comp = int(employee_soup.find("OtherCompensationAmt").text.strip())
         total_comp = base_comp + other_comp
+        # Store the total compensation of every employee listed in the tax form
         company_wide_compensation += total_comp
         
+        # If the employee is listed and doesn't make any money, skip them
         if total_comp == 0:
             continue
 
         title_name = employee_soup.find("TitleTxt").text.strip()
+        # Use the title to get a generalization of the name 
         title_group = get_title_group(title_name)
 
         job_info = {
@@ -72,14 +82,21 @@ def get_institution_occupation_data(irs_990_soup):
             "Other Comp" : other_comp,
             "Total Comp" : total_comp
         }
+        # Add the employee's information to the list of jobs in the college
         jobs.loc[len(jobs)] = job_info
 
+    # Sort all the employees by total compensation descending
     top_jobs = jobs.sort_values(by=['Total Comp'], ascending=False)
     return top_jobs, company_wide_compensation
 
+# Use the title of an employee to generalize it into a group that can be shared by multiple
+# "PRESIDENT (THROUGH 8/12)" and "PRESIDENT/CEO" get simplified into "President"
 def get_title_group(title_name):
+    # Name the base title group as other, so that if no title is found, report it as other
     tg = "Other"
     t = title_name.lower()
+    # As of now, the code will look through this list going down. If it finds one title, it will skip the rest
+    # If a title is "SECRETARY/VP/TREAS", it will be reported as "VP"
     list_of_titles = [
         "Vice President",
         "Vice Provost",
@@ -102,6 +119,7 @@ def get_title_group(title_name):
             break
     return tg
 
+# Get the overarching revenue data of a college
 def get_institution_revenue_data(irs_990_soup):
     filer = irs_990_soup.find("Filer")
     bName = filer.find("BusinessName")
@@ -124,6 +142,7 @@ def get_institution_revenue_data(irs_990_soup):
 
     return revenue_dict
 
+# Print the summary of the information found on a college (If asked for)
 def institute_summary(revenue_dict, top_jobs):
     print(revenue_dict["company"])
     print(f"Current Year Total Revenue          :", locale.currency(revenue_dict["cyTotalRevenue"], grouping=True))
@@ -133,13 +152,16 @@ def institute_summary(revenue_dict, top_jobs):
     print(f"Total College Wide Compensation     :", locale.currency(revenue_dict["company_wide_compensation"], grouping=True))
     print(top_jobs[0:10])
 
+# Write all the scrapped information to an excel file
 def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename):
     
+    # If a college or list of college excel file already exists for the list or single college, update the list instead of creating a new one
     try:
         excelWorkbook = openpyxl.load_workbook(filename)
     except:
         excelWorkbook = openpyxl.Workbook()
 
+    # If a college in the excel file already exists, overwrite the sheet instead of making a new one
     try:
         sheet = excelWorkbook[nonprofit_subtitle]
     except:
@@ -177,9 +199,10 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
         row += 1
         index += 1
 
-    #writer.close()
+    # Save the created workbook into the filename provided
     excelWorkbook.save(filename)
 
+# "Main" function. Searches for a college or list of colleges
 def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
     # Use ProPublica API to get basic institution data
     search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
@@ -202,7 +225,8 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
         revenue_dict = get_institution_revenue_data(irs_990_soup)
         revenue_dict["company_wide_compensation"] = company_wide_compensation
 
-        # Erase Comment to get a terminal summary of the information found
+        # If you would like to see a terminal summary of the information found, add "True" to the function parameters
+        # Default is that a summary will be shown if looking for a single college, and will not be shown for a list search
         if(show_summary):
             institute_summary(revenue_dict, top_jobs)
 
@@ -210,32 +234,43 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
         write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename)
     
     else:
+        # If the college is not found, report it
         print("Could not find", nonprofit_search_query)
 
 
 print("If reading from list, enter the filename. If not, just hit enter.")
 using_list = input("Using list?: ")
+# Make sure that if a list is used, that is is present in a .txt file format
+# See "Institutes.txt" for an example
 if len(using_list) > 4 and using_list[-4:] == ".txt":
     print("Reading from file", using_list, "...")
     institutes = []
+    # Get the list of institutes and institute subtitles
     with open(using_list, "r") as f:
         institutes = f.readlines()
+    # Every line has a "/n" indicating a new line in the text file, so get rid of them
     for i in range(len(institutes)):
         institutes[i] = institutes[i][:-1]
+    
+    # Look through every even numbered line for the full institute name to be searched (Odd is the subtitle)
     for i in range(len(institutes)):
         if i % 2 == 0:
+            # Every college will be saved in a sheet in a master excel file, named after the name of the txt file the list is in
+            # Ex. Using the lists of colleges in "Institutes.txt" will output in "Institutes.xlsx"
             search(institutes[i], institutes[i+1], False, using_list[:-4]+".xlsx")
         else:
             continue
     print("Output college information in", using_list[:-4]+".xlsx")
 
 else:
-    # Ask for Institution Name + Excel Sheet Name
+    # Ask for Institution Name + Institution Subtitle (Excel Sheet Name)
     nonprofit_search_query = input("Full Institute Name: ")
     nonprofit_subtitle = input("Institute Nickname: ")
     # If no subtitle is provided, just make it the search query
     if nonprofit_subtitle == "":
         nonprofit_subtitle = nonprofit_search_query
+    # The output file for a single query will be stored in the input subtitles name + .xlsx
+    #Ex. If I look up Worcester Polytechnic Institute (WPI), it will be saved as WPI.xlsx
     search(nonprofit_search_query, nonprofit_subtitle, True, nonprofit_subtitle+".xlsx")
     print("Output college information in", nonprofit_subtitle+".xlsx")
 
