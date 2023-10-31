@@ -153,7 +153,7 @@ def institute_summary(revenue_dict, top_jobs):
     print(top_jobs[0:10])
 
 # Write all the scrapped information to an excel file
-def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename):
+def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename, index):
     
     # If a college or list of college excel file already exists for the list or single college, update the list instead of creating a new one
     try:
@@ -178,6 +178,24 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
     sheet["A5"] = "Total College Wide Compensation"
     sheet["B5"] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
 
+    # Create a dictionary of the title groups to count how many times each group shows up in the school irs form
+    num_of_titles = {
+        "Vice President" : 0 ,
+        "Vice Provost" : 0,
+        "President" : 0, 
+        "Provost" : 0, 
+        "VP" : 0, 
+        "Trustee" : 0,
+        "Dean" : 0, 
+        "Exec" : 0, 
+        "Prof" : 0,
+        "Treas" : 0,
+        "Secretary" : 0,
+        "Chief" : 0,
+        "Dept Head" : 0,
+        "Other" : 0
+    }
+
     sheet["B7"] = "Name"
     sheet["C7"] = "Title"
     sheet["D7"] = "Title Group"
@@ -186,24 +204,64 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
     sheet["G7"] = "Total Comp"
 
     row = 8
-    index = 1
+    job_index = 1
     for i,job in top_jobs.iterrows():
         
-        sheet["A"+str(row)] = index
+        sheet["A"+str(row)] = job_index
         sheet["B"+str(row)] = job["Name"]
         sheet["C"+str(row)] = job["Title"]
         sheet["D"+str(row)] = job["Title Group"]
+        num_of_titles[job["Title Group"]] = num_of_titles.get(job["Title Group"]) + 1
         sheet["E"+str(row)] = job["Base Compensation"]
         sheet["F"+str(row)] = job["Other Comp"]
         sheet["G"+str(row)] = job["Total Comp"]
         row += 1
-        index += 1
+        job_index += 1
+
+    # Add college summary information to the Master Sheet
+    sheet = excelWorkbook["Sheet"]
+    sheet["A1"] = "School"
+    sheet["B1"] = "Revenue"
+    sheet["C1"] = "Net Income"
+    sheet["D1"] = "Total Employee Comp"
+    sheet["E1"] = "Presidents"
+    sheet["F1"] = "Vice Presidents"
+    sheet["G1"] = "Provosts"
+    sheet["H1"] = "Trustees"
+    sheet["I1"] = "Deans"
+    sheet["J1"] = "Executives"
+    sheet["K1"] = "Professors"
+    sheet["L1"] = "Treasurers"
+    sheet["M1"] = "Secretaries"
+    sheet["N1"] = "Chiefs"
+    sheet["O1"] = "Dept Heads"
+    sheet["P1"] = "Other"
+
+    summary_index = int((index / 2) + 2)
+
+    sheet["A" + str(summary_index)] = nonprofit_subtitle
+    sheet["B" + str(summary_index)] = locale.currency(revenue_dict["cyTotalRevenue"], grouping=True)
+    sheet["C" + str(summary_index)] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
+    sheet["D" + str(summary_index)] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
+    sheet["E" + str(summary_index)] = num_of_titles["President"]
+    sheet["E" + str(summary_index)] = num_of_titles["President"]
+    sheet["F" + str(summary_index)] = num_of_titles["Vice President"] + num_of_titles["VP"]
+    sheet["G" + str(summary_index)] = num_of_titles["Provost"] + num_of_titles["Vice Provost"]
+    sheet["H" + str(summary_index)] = num_of_titles["Trustee"]
+    sheet["I" + str(summary_index)] = num_of_titles["Dean"]
+    sheet["J" + str(summary_index)] = num_of_titles["Exec"]
+    sheet["K" + str(summary_index)] = num_of_titles["Prof"]
+    sheet["L" + str(summary_index)] = num_of_titles["Treas"]
+    sheet["M" + str(summary_index)] = num_of_titles["Secretary"]
+    sheet["N" + str(summary_index)] = num_of_titles["Chief"]
+    sheet["O" + str(summary_index)] = num_of_titles["Dept Head"]
+    sheet["P" + str(summary_index)] = num_of_titles["Other"]
 
     # Save the created workbook into the filename provided
     excelWorkbook.save(filename)
 
 # "Main" function. Searches for a college or list of colleges
-def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
+def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename, index):
     # Use ProPublica API to get basic institution data
     search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
     parameters = urllib.parse.urlencode({
@@ -231,7 +289,7 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename):
             institute_summary(revenue_dict, top_jobs)
 
         # Write all the information to the Master Excel file
-        write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename)
+        write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filename, index)
     
     else:
         # If the college is not found, report it
@@ -257,7 +315,7 @@ if len(using_list) > 4 and using_list[-4:] == ".txt":
         if i % 2 == 0:
             # Every college will be saved in a sheet in a master excel file, named after the name of the txt file the list is in
             # Ex. Using the lists of colleges in "Institutes.txt" will output in "Institutes.xlsx"
-            search(institutes[i], institutes[i+1], False, using_list[:-4]+".xlsx")
+            search(institutes[i], institutes[i+1], False, using_list[:-4]+".xlsx",i)
         else:
             continue
     print("Output college information in", using_list[:-4]+".xlsx")
@@ -271,6 +329,6 @@ else:
         nonprofit_subtitle = nonprofit_search_query
     # The output file for a single query will be stored in the input subtitles name + .xlsx
     #Ex. If I look up Worcester Polytechnic Institute (WPI), it will be saved as WPI.xlsx
-    search(nonprofit_search_query, nonprofit_subtitle, True, nonprofit_subtitle+".xlsx")
+    search(nonprofit_search_query, nonprofit_subtitle, True, nonprofit_subtitle+".xlsx",1)
     print("Output college information in", nonprofit_subtitle+".xlsx")
 
