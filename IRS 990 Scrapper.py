@@ -46,6 +46,7 @@ def get_institution_occupation_data(irs_990_soup):
     columns = ["Name", "Title", "Title Group", "Base Compensation", "Other Comp", "Total Comp"]
     jobs = pd.DataFrame(columns=columns)
     company_wide_compensation = 0
+    total_reported_employees = 0
     # SCREAM
     # Get the IRS990 part of the xml tax filling
     tax_filing_soup = irs_990_soup.find("IRS990")
@@ -65,6 +66,7 @@ def get_institution_occupation_data(irs_990_soup):
         total_comp = base_comp + other_comp
         # Store the total compensation of every employee listed in the tax form
         company_wide_compensation += total_comp
+        total_reported_employees += 1
         
         # If the employee is listed and doesn't make any money, skip them
         if total_comp == 0:
@@ -87,7 +89,7 @@ def get_institution_occupation_data(irs_990_soup):
 
     # Sort all the employees by total compensation descending
     top_jobs = jobs.sort_values(by=['Total Comp'], ascending=False)
-    return top_jobs, company_wide_compensation
+    return top_jobs, company_wide_compensation, total_reported_employees
 
 # Use the title of an employee to generalize it into a group that can be shared by multiple
 # "PRESIDENT (THROUGH 8/12)" and "PRESIDENT/CEO" get simplified into "President"
@@ -121,6 +123,10 @@ def get_title_group(title_name):
 
 # Get the overarching revenue data of a college
 def get_institution_revenue_data(irs_990_soup):
+    beginYear = irs_990_soup.find("TaxPeriodBeginDt").text.strip()[:4]
+    endYear = irs_990_soup.find("TaxPeriodEndDt").text.strip()[:4]
+    year = beginYear + "-" + endYear
+
     filer = irs_990_soup.find("Filer")
     bName = filer.find("BusinessName")
     company = bName.find("BusinessNameLine1Txt").text.strip()
@@ -132,12 +138,15 @@ def get_institution_revenue_data(irs_990_soup):
     cyNetRevenue = int(irs_990_soup.find("CYRevenuesLessExpensesAmt").text.strip())
 
     revenue_dict = {
+        "year" : year,
         "company" : company,
         "pyTotalRevenue" : pyTotalRevenue,
         "cyTotalRevenue" : cyTotalRevenue,
         "pyNetRevenue" : pyNetRevenue,
         "cyNetRevenue" : cyNetRevenue,
-        "company_wide_compensation" : 0
+        "company_wide_compensation" : 0,
+        "average_comp_per_reported" : 0,
+        "net_over_comp_index" : 0
     }
 
     return revenue_dict
@@ -167,16 +176,22 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
     except:
         excelWorkbook.create_sheet(title=nonprofit_subtitle)
         sheet = excelWorkbook[nonprofit_subtitle]
-    sheet["A1"] = "Current Year Total Revenue"
-    sheet["B1"] = locale.currency(revenue_dict["cyTotalRevenue"], grouping=True)
-    sheet["A2"] = "Prior Year Total Revenue"
-    sheet["B2"] = locale.currency(revenue_dict["pyTotalRevenue"], grouping=True)
-    sheet["A3"] = "Current Year Net Income Less Expense"
-    sheet["B3"] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
-    sheet["A4"] = "Prior Year Net Income Less Expense"
-    sheet["B4"] = locale.currency(revenue_dict["pyNetRevenue"], grouping=True)
-    sheet["A5"] = "Total College Wide Compensation"
-    sheet["B5"] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
+    sheet["A1"] = "Year Range"
+    sheet["B1"] = revenue_dict["year"]
+    sheet["A2"] = "Current Year Total Revenue"
+    sheet["B2"] = locale.currency(revenue_dict["cyTotalRevenue"], grouping=True)
+    sheet["A3"] = "Prior Year Total Revenue"
+    sheet["B3"] = locale.currency(revenue_dict["pyTotalRevenue"], grouping=True)
+    sheet["A4"] = "Current Year Net Income Less Expense"
+    sheet["B4"] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
+    sheet["A5"] = "Prior Year Net Income Less Expense"
+    sheet["B5"] = locale.currency(revenue_dict["pyNetRevenue"], grouping=True)
+    sheet["A6"] = "Total College Wide Compensation"
+    sheet["B6"] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
+    sheet["A7"] = "Average Comp Per Reported Employee"
+    sheet["B7"] = locale.currency(revenue_dict["average_comp_per_reported"], grouping=True)
+    sheet["A8"] = "Net Income / Total Comp Index"
+    sheet["B8"] = revenue_dict["net_over_comp_index"]
 
     # Create a dictionary of the title groups to count how many times each group shows up in the school irs form
     num_of_titles = {
@@ -196,14 +211,14 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
         "Other" : 0
     }
 
-    sheet["B7"] = "Name"
-    sheet["C7"] = "Title"
-    sheet["D7"] = "Title Group"
-    sheet["E7"] = "Base Compensation"
-    sheet["F7"] = "Other Comp"
-    sheet["G7"] = "Total Comp"
+    sheet["B10"] = "Name"
+    sheet["C10"] = "Title"
+    sheet["D10"] = "Title Group"
+    sheet["E10"] = "Base Compensation"
+    sheet["F10"] = "Other Comp"
+    sheet["G10"] = "Total Comp"
 
-    row = 8
+    row = 11
     job_index = 1
     for i,job in top_jobs.iterrows():
         
@@ -220,42 +235,47 @@ def write_intitution_to_excel(revenue_dict, top_jobs, nonprofit_subtitle, filena
 
     # Add college summary information to the Master Sheet
     sheet = excelWorkbook["Sheet"]
-    sheet["A1"] = "School"
-    sheet["B1"] = "Revenue"
-    sheet["C1"] = "Net Income"
-    sheet["D1"] = "Total Employee Comp"
-    sheet["E1"] = "Presidents"
-    sheet["F1"] = "Vice Presidents"
-    sheet["G1"] = "Provosts"
-    sheet["H1"] = "Trustees"
-    sheet["I1"] = "Deans"
-    sheet["J1"] = "Executives"
-    sheet["K1"] = "Professors"
-    sheet["L1"] = "Treasurers"
-    sheet["M1"] = "Secretaries"
-    sheet["N1"] = "Chiefs"
-    sheet["O1"] = "Dept Heads"
-    sheet["P1"] = "Other"
+    sheet["A1"] = "Year"
+    sheet["B1"] = "School"
+    sheet["C1"] = "Revenue"
+    sheet["D1"] = "Net Income"
+    sheet["E1"] = "Total Employee Comp"
+    sheet["F1"] = "Average Comp"
+    sheet["G1"] = "Net/Comp Index"
+    sheet["H1"] = "Presidents"
+    sheet["I1"] = "Vice Presidents"
+    sheet["J1"] = "Provosts"
+    sheet["K1"] = "Trustees"
+    sheet["L1"] = "Deans"
+    sheet["M1"] = "Executives"
+    sheet["N1"] = "Professors"
+    sheet["O1"] = "Treasurers"
+    sheet["P1"] = "Secretaries"
+    sheet["Q1"] = "Chiefs"
+    sheet["R1"] = "Dept Heads"
+    sheet["S1"] = "Other"
 
     summary_index = int((index / 2) + 2)
 
-    sheet["A" + str(summary_index)] = nonprofit_subtitle
-    sheet["B" + str(summary_index)] = locale.currency(revenue_dict["cyTotalRevenue"], grouping=True)
-    sheet["C" + str(summary_index)] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
-    sheet["D" + str(summary_index)] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
-    sheet["E" + str(summary_index)] = num_of_titles["President"]
-    sheet["E" + str(summary_index)] = num_of_titles["President"]
-    sheet["F" + str(summary_index)] = num_of_titles["Vice President"] + num_of_titles["VP"]
-    sheet["G" + str(summary_index)] = num_of_titles["Provost"] + num_of_titles["Vice Provost"]
-    sheet["H" + str(summary_index)] = num_of_titles["Trustee"]
-    sheet["I" + str(summary_index)] = num_of_titles["Dean"]
-    sheet["J" + str(summary_index)] = num_of_titles["Exec"]
-    sheet["K" + str(summary_index)] = num_of_titles["Prof"]
-    sheet["L" + str(summary_index)] = num_of_titles["Treas"]
-    sheet["M" + str(summary_index)] = num_of_titles["Secretary"]
-    sheet["N" + str(summary_index)] = num_of_titles["Chief"]
-    sheet["O" + str(summary_index)] = num_of_titles["Dept Head"]
-    sheet["P" + str(summary_index)] = num_of_titles["Other"]
+    sheet["A" + str(summary_index)] = revenue_dict["year"]
+    sheet["B" + str(summary_index)] = nonprofit_subtitle
+    sheet["C" + str(summary_index)] = locale.currency(revenue_dict["cyTotalRevenue"], grouping=True)
+    sheet["D" + str(summary_index)] = locale.currency(revenue_dict["cyNetRevenue"], grouping=True)
+    sheet["E" + str(summary_index)] = locale.currency(revenue_dict["company_wide_compensation"], grouping=True)
+    sheet["F" + str(summary_index)] = locale.currency(revenue_dict["average_comp_per_reported"], grouping=True)
+    sheet["G" + str(summary_index)] = revenue_dict["net_over_comp_index"]
+    sheet["H" + str(summary_index)] = num_of_titles["President"]
+    sheet["I" + str(summary_index)] = num_of_titles["Vice President"] + num_of_titles["VP"]
+    sheet["J" + str(summary_index)] = num_of_titles["Provost"] + num_of_titles["Vice Provost"]
+    sheet["K" + str(summary_index)] = num_of_titles["Trustee"]
+    sheet["L" + str(summary_index)] = num_of_titles["Dean"]
+    sheet["M" + str(summary_index)] = num_of_titles["Exec"]
+    sheet["N" + str(summary_index)] = num_of_titles["Prof"]
+    sheet["O" + str(summary_index)] = num_of_titles["Treas"]
+    sheet["P" + str(summary_index)] = num_of_titles["Secretary"]
+    sheet["Q" + str(summary_index)] = num_of_titles["Chief"]
+    sheet["R" + str(summary_index)] = num_of_titles["Dept Head"]
+    sheet["S" + str(summary_index)] = num_of_titles["Other"]
 
     # Save the created workbook into the filename provided
     excelWorkbook.save(filename)
@@ -277,12 +297,20 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename, i
         irs_990_soup = get_irs_990_web_content(search_result)
 
         # Use xml content to get the paid reported occupations sorted by highest compensation descending
-        top_jobs, company_wide_compensation = get_institution_occupation_data(irs_990_soup)
+        top_jobs, company_wide_compensation, total_reported_employees = get_institution_occupation_data(irs_990_soup)
 
         # Get the basic IRS data from the xml content
         revenue_dict = get_institution_revenue_data(irs_990_soup)
         revenue_dict["company_wide_compensation"] = company_wide_compensation
-
+        try:
+            revenue_dict["average_comp_per_reported"] = company_wide_compensation / total_reported_employees
+        except:
+            revenue_dict["average_comp_per_reported"] = 0
+        try:
+            revenue_dict["net_over_comp_index"] = revenue_dict["cyNetRevenue"] / company_wide_compensation
+        except:
+            revenue_dict["net_over_comp_index"] = 0
+        
         # If you would like to see a terminal summary of the information found, add "True" to the function parameters
         # Default is that a summary will be shown if looking for a single college, and will not be shown for a list search
         if(show_summary):
@@ -304,7 +332,7 @@ if len(using_list) > 4 and using_list[-4:] == ".txt":
     print("Reading from file", using_list, "...")
     institutes = []
     # Get the list of institutes and institute subtitles
-    with open(using_list, "r") as f:
+    with open("Inputs/"+using_list, "r") as f:
         institutes = f.readlines()
     # Every line has a "/n" indicating a new line in the text file, so get rid of them
     for i in range(len(institutes)):
@@ -315,10 +343,10 @@ if len(using_list) > 4 and using_list[-4:] == ".txt":
         if i % 2 == 0:
             # Every college will be saved in a sheet in a master excel file, named after the name of the txt file the list is in
             # Ex. Using the lists of colleges in "Institutes.txt" will output in "Institutes.xlsx"
-            search(institutes[i], institutes[i+1], False, using_list[:-4]+".xlsx",i)
+            search(institutes[i], institutes[i+1], False, "Outputs/"+using_list[:-4]+".xlsx",i)
         else:
             continue
-    print("Output college information in", using_list[:-4]+".xlsx")
+    print("Output college information in", "Outputs/"+using_list[:-4]+".xlsx")
 
 else:
     # Ask for Institution Name + Institution Subtitle (Excel Sheet Name)
@@ -329,6 +357,6 @@ else:
         nonprofit_subtitle = nonprofit_search_query
     # The output file for a single query will be stored in the input subtitles name + .xlsx
     #Ex. If I look up Worcester Polytechnic Institute (WPI), it will be saved as WPI.xlsx
-    search(nonprofit_search_query, nonprofit_subtitle, True, nonprofit_subtitle+".xlsx",1)
-    print("Output college information in", nonprofit_subtitle+".xlsx")
+    search(nonprofit_search_query, nonprofit_subtitle, True, "Outputs/"+nonprofit_subtitle+".xlsx",1)
+    print("Output college information in", "Outputs/"+nonprofit_subtitle+".xlsx")
 
