@@ -13,7 +13,7 @@ Once all data has been gathered, it will then generate an excel file. If only on
 Due to how the search for a college works, the name of the college input has to be written out completely for propublica to return a valid filling. For example, searching "WPI" will return nothing, but "Worcester Polytechnic Instiute" will return WPI's tax filling. 
 
 ### Searching 
-After running the code, the terminal will ask whether you are using a list or not. If you are using a list, input the text file containing the list. The code will look for the ".txt" extension in the filename to use the list, so any other input without ".txt" at the end will prompt a single college lookup.
+After running the code, the terminal will ask whether you are using a list or not. If you are using a list, input the text file containing the list. The code will look for the ".txt" extension in the filename to use the list, so any other input without ".txt" at the end will prompt a single college lookup. Note: Do not include "Inputs/" in the terminal, the code already reads lists from the "Inputs" Folder
 
 #### Single College Lookup
 The terminal will ask for two inputs: The college's full name and whatever subtitle you would like to use. The full name is required to be written out in accordace with the important note above. The subtitle will be the name of the excel file output/the sheet name in the excel file. Normally, this will be a college's acronym (Northeastern University = NEU), but string subtitles work too (University of Massachusetts Amherst = UMass Amherst)
@@ -35,7 +35,7 @@ UMass Amherst
 
 ...
 
-Once the terminal asks if you are using a list, input the name of the text file containing the list (example in the github would be "Institutes.txt"). The code will then search through all the listed colleges and output them in the master excel workbook created.
+Once the terminal asks if you are using a list, input the name of the text file containing the list (example in the github would be "Inputs/Test List.txt"). The code will then search through all the listed colleges and output them in the master excel workbook created.
 
 ## To-Do
 - When looking up some colleges, other associations affiliated with the college can sometimes show up first, so more specific searching is required

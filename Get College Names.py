@@ -1,7 +1,5 @@
 import urllib
 import requests
-import locale
-import pprint
 
 # This code gets every nonprofit organization with the ntee code '2' (Education/Educational Services) and the keywork "University"
 # All of the results get placed into "Colleges.txt" 
