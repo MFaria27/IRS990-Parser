@@ -22,11 +22,17 @@ The terminal will ask for two inputs: The college's full name and whatever subti
 Create a text file in the code's directory/folder. The list should be the name of the college, new line, the subtitle for the college, new line, following this example:
 
 Worcester Polytechnic Institute
+
 WPI
+
 Northeastern University
+
 NEU
+
 Universtiy of Massachusetts Amherst
+
 UMass Amherst
+
 ...
 
 Once the terminal asks if you are using a list, input the name of the text file containing the list (example in the github would be "Institutes.txt"). The code will then search through all the listed colleges and output them in the master excel workbook created.
