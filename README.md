@@ -12,13 +12,13 @@ Once all data has been gathered, it will then generate an excel file. If only on
 ### Important Note
 Due to how the search for a college works, the name of the college input has to be written out completely for propublica to return a valid filling. For example, searching "WPI" will return nothing, but "Worcester Polytechnic Instiute" will return WPI's tax filling. 
 
-### Searching 
+## Searching 
 After running the code, the terminal will ask whether you are using a list or not. If you are using a list, input the text file containing the list. The code will look for the ".txt" extension in the filename to use the list, so any other input without ".txt" at the end will prompt a single college lookup. Note: Do not include "Inputs/" in the terminal, the code already reads lists from the "Inputs" Folder
 
-#### Single College Lookup
+### Single College Lookup
 The terminal will ask for two inputs: The college's full name and whatever subtitle you would like to use. The full name is required to be written out in accordace with the important note above. The subtitle will be the name of the excel file output/the sheet name in the excel file. Normally, this will be a college's acronym (Northeastern University = NEU), but string subtitles work too (University of Massachusetts Amherst = UMass Amherst)
 
-#### List of College Lookup
+### List of College Lookup
 Create a text file in the code's directory/folder. The list should be the name of the college, new line, the subtitle for the college, new line, following this example:
 
 Worcester Polytechnic Institute
