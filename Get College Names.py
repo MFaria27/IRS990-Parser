@@ -8,7 +8,7 @@ import pprint
 # Note: May take time to run
 
 #Number of pages: 400
-with open("colleges.txt", "w") as colleges:
+with open("college names.txt", "w") as colleges:
     for page_index in range(0,400):
         colleges.write("Page " + str(page_index) + "\n")
         search_url = "https://projects.propublica.org/nonprofits/api/v2/search.json?"
