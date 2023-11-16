@@ -88,11 +88,12 @@ def get_institution_occupation_data(irs_990_soup):
         total_comp = base_comp + other_comp
         # Store the total compensation of every employee listed in the tax form
         company_wide_compensation += total_comp
-        total_reported_employees += 1
         
         # If the employee is listed and doesn't make any money, skip them
         if total_comp == 0:
             continue
+
+        total_reported_employees += 1
 
         title_name = employee_soup.find("TitleTxt").text.strip()
         # Use the title to get a generalization of the name 
@@ -246,6 +247,7 @@ def write_intitution_to_excel(revenue_dict, nonprofit_subtitle, filename, job_li
         sheet[chr(college_summary_year_index) + "6"] = locale.currency(year_data["company_wide_compensation"], grouping=True)
         sheet[chr(college_summary_year_index) + "7"] = locale.currency(year_data["average_comp_per_reported"], grouping=True)
         sheet[chr(college_summary_year_index) + "8"] = year_data["net_over_comp_index"]
+        sheet[chr(college_summary_year_index) + "9"] = year_data["total_reported_employees"]
         
         college_summary_year_index += 1
 
