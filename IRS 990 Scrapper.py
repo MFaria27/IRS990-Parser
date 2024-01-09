@@ -173,6 +173,7 @@ def get_institution_revenue_data(irs_990_soup, nonprofit_query):
         "average_comp_per_reported" : 0,
         "net_over_comp_index" : 0,
         "total_reported_employees" : 0,
+        "net_over_revenue": 0,
         "job_information" : pd.DataFrame()
     }
 
@@ -202,19 +203,20 @@ def write_intitution_to_excel(revenue_dict, nonprofit_subtitle, filename, job_li
     sheet["E1"] = "Total Employee Comp"
     sheet["F1"] = "Average Comp"
     sheet["G1"] = "Net/Comp Index"
-    sheet["H1"] = "Total Employees"
-    sheet["I1"] = "Presidents"
-    sheet["J1"] = "Vice Presidents"
-    sheet["K1"] = "Provosts"
-    sheet["L1"] = "Trustees"
-    sheet["M1"] = "Deans"
-    sheet["N1"] = "Executives"
-    sheet["O1"] = "Professors"
-    sheet["P1"] = "Treasurers"
-    sheet["Q1"] = "Secretaries"
-    sheet["R1"] = "Chiefs"
-    sheet["S1"] = "Dept Heads"
-    sheet["T1"] = "Other"
+    sheet["H1"] = "Net/Rev Index"
+    sheet["I1"] = "Total Employees"
+    sheet["J1"] = "Presidents"
+    sheet["K1"] = "Vice Presidents"
+    sheet["L1"] = "Provosts"
+    sheet["M1"] = "Trustees"
+    sheet["N1"] = "Deans"
+    sheet["O1"] = "Executives"
+    sheet["P1"] = "Professors"
+    sheet["Q1"] = "Treasurers"
+    sheet["R1"] = "Secretaries"
+    sheet["S1"] = "Chiefs"
+    sheet["T1"] = "Dept Heads"
+    sheet["U1"] = "Other"
 
     sheet = excelWorkbook[nonprofit_subtitle]
     sheet["A1"] = "Year Range"
@@ -225,18 +227,19 @@ def write_intitution_to_excel(revenue_dict, nonprofit_subtitle, filename, job_li
     sheet["A6"] = "Total College Wide Compensation"
     sheet["A7"] = "Average Comp Per Reported Employee"
     sheet["A8"] = "Net Income / Total Comp Index"
-    sheet["A9"] = "Total Reported Employees"
-    sheet["A11"] = "Year"
-    sheet["B11"] = "Name"
-    sheet["C11"] = "Title"
-    sheet["D11"] = "Title Group"
-    sheet["E11"] = "Base Compensation"
-    sheet["F11"] = "Other Comp"
-    sheet["G11"] = "Total Comp"
+    sheet["A9"] = "Net Income / Total Revenue Index"
+    sheet["A10"] = "Total Reported Employees"
+    sheet["A12"] = "Year"
+    sheet["B12"] = "Name"
+    sheet["C12"] = "Title"
+    sheet["D12"] = "Title Group"
+    sheet["E12"] = "Base Compensation"
+    sheet["F12"] = "Other Comp"
+    sheet["G12"] = "Total Comp"
 
     summary_index = job_list_index
     college_summary_year_index = 66
-    excel_row = 12
+    excel_row = 13
     for year_data in revenue_dict:
         sheet = excelWorkbook[nonprofit_subtitle]
         sheet[chr(college_summary_year_index) + "1"] = year_data["year"]
@@ -247,7 +250,8 @@ def write_intitution_to_excel(revenue_dict, nonprofit_subtitle, filename, job_li
         sheet[chr(college_summary_year_index) + "6"] = locale.currency(year_data["company_wide_compensation"], grouping=True)
         sheet[chr(college_summary_year_index) + "7"] = locale.currency(year_data["average_comp_per_reported"], grouping=True)
         sheet[chr(college_summary_year_index) + "8"] = year_data["net_over_comp_index"]
-        sheet[chr(college_summary_year_index) + "9"] = year_data["total_reported_employees"]
+        sheet[chr(college_summary_year_index) + "9"] = year_data["net_over_revenue"]
+        sheet[chr(college_summary_year_index) + "10"] = year_data["total_reported_employees"]
         
         college_summary_year_index += 1
 
@@ -290,19 +294,20 @@ def write_intitution_to_excel(revenue_dict, nonprofit_subtitle, filename, job_li
         sheet["E" + str(summary_index)] = locale.currency(year_data["company_wide_compensation"], grouping=True)
         sheet["F" + str(summary_index)] = locale.currency(year_data["average_comp_per_reported"], grouping=True)
         sheet["G" + str(summary_index)] = year_data["net_over_comp_index"]
-        sheet["H" + str(summary_index)] = year_data["total_reported_employees"]
-        sheet["I" + str(summary_index)] = num_of_titles["President"]
-        sheet["J" + str(summary_index)] = num_of_titles["Vice President"] + num_of_titles["VP"]
-        sheet["K" + str(summary_index)] = num_of_titles["Provost"] + num_of_titles["Vice Provost"]
-        sheet["L" + str(summary_index)] = num_of_titles["Trustee"]
-        sheet["M" + str(summary_index)] = num_of_titles["Dean"]
-        sheet["N" + str(summary_index)] = num_of_titles["Exec"]
-        sheet["O" + str(summary_index)] = num_of_titles["Prof"]
-        sheet["P" + str(summary_index)] = num_of_titles["Treas"]
-        sheet["Q" + str(summary_index)] = num_of_titles["Secretary"]
-        sheet["R" + str(summary_index)] = num_of_titles["Chief"]
-        sheet["S" + str(summary_index)] = num_of_titles["Dept Head"]
-        sheet["T" + str(summary_index)] = num_of_titles["Other"]
+        sheet["H" + str(summary_index)] = year_data["net_over_revenue"]
+        sheet["I" + str(summary_index)] = year_data["total_reported_employees"]
+        sheet["J" + str(summary_index)] = num_of_titles["President"]
+        sheet["K" + str(summary_index)] = num_of_titles["Vice President"] + num_of_titles["VP"]
+        sheet["L" + str(summary_index)] = num_of_titles["Provost"] + num_of_titles["Vice Provost"]
+        sheet["M" + str(summary_index)] = num_of_titles["Trustee"]
+        sheet["N" + str(summary_index)] = num_of_titles["Dean"]
+        sheet["O" + str(summary_index)] = num_of_titles["Exec"]
+        sheet["P" + str(summary_index)] = num_of_titles["Prof"]
+        sheet["Q" + str(summary_index)] = num_of_titles["Treas"]
+        sheet["R" + str(summary_index)] = num_of_titles["Secretary"]
+        sheet["S" + str(summary_index)] = num_of_titles["Chief"]
+        sheet["T" + str(summary_index)] = num_of_titles["Dept Head"]
+        sheet["U" + str(summary_index)] = num_of_titles["Other"]
         
         summary_index += 1
 
@@ -351,6 +356,10 @@ def search(nonprofit_search_query, nonprofit_subtitle, show_summary, filename, i
                 revenue_dict["net_over_comp_index"] = revenue_dict["cyNetRevenue"] / company_wide_compensation
             except:
                 revenue_dict["net_over_comp_index"] = 0
+            try:
+                revenue_dict["net_over_revenue"] = revenue_dict["cyNetRevenue"] / revenue_dict["cyTotalRevenue"]
+            except:
+                revenue_dict["net_over_revenue"] = 0
             revenue_dict["total_reported_employees"] = total_reported_employees
             revenue_dict["job_information"] = top_jobs
             
